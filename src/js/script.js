@@ -328,6 +328,61 @@ function setRuleLoading(ruleElement, isLoading, resultsContainer) {
     statusDiv.textContent = '';
 }
 
+// 프록시 서버를 통해 사용자가 푼 문제 목록 가져오기
+async function getSolvedProblems(userId) {
+    try {
+        const allSolved = new Set();
+        let page = 1;
+        const maxPages = 50; // 최대 50페이지
+
+        while (page <= maxPages) {
+            // solved.ac API를 프록시를 통해 호출
+            const query = `solved_by:${userId}`;
+            const encodedQuery = encodeURIComponent(query);
+            const apiUrl = `https://boj-proxy-server.vercel.app/api/proxy?query=${encodedQuery}&sort=id&page=${page}`;
+
+            const response = await fetch(apiUrl, {
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!response.ok) {
+                console.error(`Failed to fetch page ${page} for ${userId}`);
+                break;
+            }
+
+            const data = await response.json();
+
+            // 문제 ID 추가
+            if (data.items && data.items.length > 0) {
+                data.items.forEach(problem => {
+                    allSolved.add(problem.problemId);
+                });
+
+                console.log(`${userId} - 페이지 ${page}: ${data.items.length}개 문제 로드 (총 ${allSolved.size}개)`);
+
+                // 더 이상 문제가 없으면 중단
+                if (data.items.length < 50) {
+                    break;
+                }
+            } else {
+                break;
+            }
+
+            page++;
+
+            // API 호출 제한을 위한 딜레이
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        console.log(`✅ ${userId}님이 푼 총 문제 수: ${allSolved.size}개`);
+        return allSolved;
+    } catch (error) {
+        console.error(`❌ ${userId}의 푼 문제 목록 가져오기 실패:`, error);
+        return new Set();
+    }
+}
+
+// findProblemsForRule 함수도 수정 (더 많은 문제 가져오기)
 async function findProblemsForRule(rule, unsolvedQuery) {
     const tierQuery = `tier:${rule.tierFrom}..${rule.tierTo}`;
     let tagQuery = '';
@@ -337,7 +392,10 @@ async function findProblemsForRule(rule, unsolvedQuery) {
             rule.tags.map(t => `tag:${t}`).join(' ');
     }
     const langQuery = `lang:${rule.lang.toLowerCase()}`;
-    const fullQuery = `${tierQuery} ${tagQuery} ${langQuery} ${unsolvedQuery}`.trim();
+    const fullQuery = `${tierQuery} ${tagQuery} ${langQuery}`.trim(); // unsolvedQuery 제거
+
+    console.log('🔍 검색 쿼리:', fullQuery);
+
     const encodedQuery = encodeURIComponent(fullQuery);
     const apiUrl = `https://boj-proxy-server.vercel.app/api/proxy?query=${encodedQuery}&sort=${rule.sort}`;
 
@@ -349,17 +407,23 @@ async function findProblemsForRule(rule, unsolvedQuery) {
         });
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
         const data = await response.json();
+
+        console.log(`📦 API로부터 받은 문제 수: ${data.items?.length || 0}개`);
+
         const problems = data.items || [];
+
+        // 랜덤 정렬이면 섞기
         const finalProblems = rule.sort === 'random' ? problems.sort(() => 0.5 - Math.random()) : problems;
-        return finalProblems.slice(0, rule.count);
+
+        return finalProblems; // 일단 모든 문제 반환 (필터링은 나중에)
     } catch (error) {
-        console.error(`Fetching problems failed for query "${fullQuery}":`, error);
+        console.error(`❌ API 요청 실패:`, error);
         statusDiv.textContent = `API 요청 실패. 브라우저 콘솔(F12)을 확인해주세요.`;
         return [];
     }
 }
 
-// 개별 조건별 문제 생성 핸들러
+// handleGenerateSingleRule 함수 수정
 async function handleGenerateSingleRule(ruleElement, resultsContainer) {
     setRuleLoading(ruleElement, true, resultsContainer);
 
@@ -369,7 +433,6 @@ async function handleGenerateSingleRule(ruleElement, resultsContainer) {
         setRuleLoading(ruleElement, false, resultsContainer);
         return;
     }
-    const unsolvedQuery = selectedUsers.map(u => `-solved_by:${u}`).join(' ');
 
     const count = parseInt(ruleElement.querySelector('.count-input').value) || 0;
     if (count <= 0) {
@@ -377,6 +440,22 @@ async function handleGenerateSingleRule(ruleElement, resultsContainer) {
         setRuleLoading(ruleElement, false, resultsContainer);
         return;
     }
+
+    console.log('👥 선택된 사용자:', selectedUsers);
+
+    // 선택된 사용자들이 푼 문제 목록 가져오기
+    console.log('⏳ 사용자들의 푼 문제 목록을 가져오는 중...');
+    const solvedProblemsSets = await Promise.all(
+        selectedUsers.map(userId => getSolvedProblems(userId))
+    );
+
+    // 모든 사용자가 푼 문제들의 합집합
+    const allSolvedProblems = new Set();
+    solvedProblemsSets.forEach(solvedSet => {
+        solvedSet.forEach(problemId => allSolvedProblems.add(problemId));
+    });
+
+    console.log(`🚫 필터링할 문제 총 개수: ${allSolvedProblems.size}개`);
 
     const rule = {
         tierFrom: ruleElement.querySelector('.tier-from-select').value,
@@ -388,9 +467,32 @@ async function handleGenerateSingleRule(ruleElement, resultsContainer) {
         count: count
     };
 
-    const problems = await findProblemsForRule(rule, unsolvedQuery);
-    displayResults(rule, problems, resultsContainer);
+    // 프록시 서버에서 문제 가져오기
+    console.log('⏳ 조건에 맞는 문제를 검색하는 중...');
+    const allProblems = await findProblemsForRule(rule, '');
 
+    console.log('📊 필터링 전 문제 목록 (첫 5개):');
+    allProblems.slice(0, 5).forEach(p => {
+        const isSolved = allSolvedProblems.has(p.problemId);
+        console.log(`  - ${p.problemId}: ${isSolved ? '❌ 이미 풂' : '✅ 안 풂'}`);
+    });
+
+    // 클라이언트 측에서 필터링: 선택된 사용자들이 풀지 않은 문제만
+    const unsolvedProblems = allProblems.filter(problem => {
+        const isSolved = allSolvedProblems.has(problem.problemId);
+        return !isSolved;
+    });
+
+    console.log(`📈 필터링 전: ${allProblems.length}개`);
+    console.log(`📉 필터링 후: ${unsolvedProblems.length}개`);
+    console.log(`🎯 요청한 문제 수: ${rule.count}개`);
+
+    // 필요한 개수만큼만 선택
+    const finalProblems = unsolvedProblems.slice(0, rule.count);
+
+    console.log('✅ 최종 선택된 문제:', finalProblems.map(p => p.problemId));
+
+    displayResults(rule, finalProblems, resultsContainer);
     setRuleLoading(ruleElement, false, resultsContainer);
 }
 
