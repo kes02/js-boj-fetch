@@ -28,8 +28,8 @@ jobs:
       - name: Inject Supabase Secrets
         run: |
           # 1. subscribe.js 치환
-          sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" src/js/subscribe.js
-          sed -i "s|___SUPABASE_ANON_KEY___|${{ secrets.SUPABASE_ANON_KEY }}|g" src/js/subscribe.js
+          sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" js/subscribe.js
+          sed -i "s|___SUPABASE_ANON_KEY___|${{ secrets.SUPABASE_ANON_KEY }}|g" js/subscribe.js
           
           # 2. unsubscribe/index.html 치환
           sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" unsubscribe/index.html
