@@ -358,7 +358,7 @@
             </div>
             <div class="form-group flex-1">
                 <label for="schedule-time">발송 시간</label>
-                <input type="time" id="schedule-time" required value="09:00">
+                <select id="schedule-time" required></select>
             </div>
         </div>
 
@@ -586,6 +586,27 @@
             autoList.style.display = 'none';
         }
     });
+
+    // 발송 시간 로직
+    const timeSelect = document.getElementById('schedule-time');
+
+    for (let i = 0; i < 24; i++) {
+        const hourStr = String(i).padStart(2, '0'); // value용 (00 ~ 23)
+        const ampm = i < 12 ? '오전' : '오후';
+
+        // UI 표시용 시간 계산 (0시는 12시로, 13시는 1시로)
+        const displayHour = i === 0 ? 12 : (i > 12 ? i - 12 : i);
+        const displayHourStr = String(displayHour).padStart(2, '0');
+
+        const option = document.createElement('option');
+        option.value = `${hourStr}:00`;
+        option.textContent = `${ampm} ${displayHourStr}:00`;
+
+        // 09:00을 기본값으로 설정
+        if (i === 9) option.selected = true;
+
+        timeSelect.appendChild(option);
+    }
 </script>
 </body>
 </html>
