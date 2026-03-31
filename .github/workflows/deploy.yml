@@ -1,25 +1,19 @@
 name: Deploy to GitHub Pages
 
-# 이 워크플로우를 언제 실행할지 정의
 on:
-  # develop 브랜치에 푸시될 때마다 실행
   push:
     branches: ["develop"]
-  # Actions 탭에서 수동으로 실행할 수도 있게 함
   workflow_dispatch:
 
-# 워크플로우가 GitHub 저장소에 접근할 수 있는 권한 설정
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 동시성 설정: 여러 배포가 동시에 실행되는 것을 방지
 concurrency:
   group: "pages"
   cancel-in-progress: true
 
-# 실제 수행할 작업(Job) 정의
 jobs:
   deploy:
     environment:
@@ -27,21 +21,28 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      # 1. 저장소의 코드를 체크아웃(가져오기)
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. GitHub Pages 설정을 준비
+      # 소스 코드 내의 키워드를 GitHub Secrets 값으로 치환
+      - name: Inject Supabase Secrets
+        run: |
+          # 1. subscribe.js 치환
+          sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" src/js/subscribe.js
+          sed -i "s|___SUPABASE_ANON_KEY___|${{ secrets.SUPABASE_ANON_KEY }}|g" src/js/subscribe.js
+          
+          # 2. unsubscribe/index.html 치환
+          sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" unsubscribe/index.html
+          sed -i "s|___SUPABASE_ANON_KEY___|${{ secrets.SUPABASE_ANON_KEY }}|g" unsubscribe/index.html
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      # 3. 배포할 파일을 아티팩트(artifact)로 업로드
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './src'
+          path: './'
 
-      # 4. 업로드된 아티팩트를 GitHub Pages에 배포
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
