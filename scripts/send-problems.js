@@ -28,6 +28,8 @@ async function run() {
         const kstMinute = kstTime.getUTCMinutes();
         const kstDayOfWeek = kstTime.getUTCDay().toString(); // 0(일요일) ~ 6(토요일)
         const kstDayOfMonth = kstTime.getUTCDate().toString(); // 1 ~ 31
+        const todayStr = kstTime.toISOString().split('T')[0]; // "YYYY-MM-DD" 형식
+        const currentHourMinute = `${String(kstHour).padStart(2, '0')}:${String(kstMinute).padStart(2, '0')}`; // "HH:MM" 형식
 
         // 3. DB에서 전체 구독자 목록 가져오기
         const { data: subscribers, error } = await supabase
@@ -59,20 +61,14 @@ async function run() {
         const targetUsers = subscribers.filter(sub => {
             if (!sub.schedule_time || !sub.frequency) return false;
 
-            // --- [시간 매칭 로직 시작] ---
-            const [subHourStr, subMinStr] = sub.schedule_time.split(':');
-            const subHour = parseInt(subHourStr, 10);
-            const subMin = parseInt(subMinStr, 10);
+            // --- [상태(State) 기반 매칭 로직 시작] ---
+            // 1) 오늘 이미 발송했는지 체크 (중복 발송 차단)
+            if (sub.last_sent_date === todayStr) return false;
 
-            const currentTotalMins = kstHour * 60 + kstMinute;
-            const subTotalMins = subHour * 60 + subMin;
-
-            let diff = currentTotalMins - subTotalMins;
-            if (diff < 0) diff += 24 * 60;
-
-            const isTimeMatch = diff >= 0 && diff < 15;
-            if (!isTimeMatch) return false;
-            // --- [시간 매칭 로직 끝] ---
+            // 2) 유저가 설정한 시간이 되었거나 지났는지 체크
+            // (예: 설정시간 "09:00", 현재시간 "09:15" -> true)
+            if (sub.schedule_time > currentHourMinute) return false;
+            // --- [상태(State) 기반 매칭 로직 끝] ---
 
             // --- [주기 및 날짜 보정 로직 시작] ---
             if (sub.frequency === 'daily') return true;
@@ -85,14 +81,8 @@ async function run() {
 
             if (sub.frequency === 'monthly') {
                 const requestedDay = parseInt(sub.day_value, 10);
-
-                // 해당 월의 마지막 날짜 구하기 (다음달의 0번째 날)
                 const lastDayOfMonth = new Date(kstTime.getUTCFullYear(), kstTime.getUTCMonth() + 1, 0).getUTCDate();
-
-                // 보정된 발송일 계산 (예: 31일 설정했으나 2월이면 28일로 계산)
                 const actualSendDay = Math.min(requestedDay, lastDayOfMonth);
-
-                // 오늘 날짜(kstDayOfMonth)가 보정된 발송일과 일치하는지 확인
                 return parseInt(kstDayOfMonth, 10) === actualSendDay;
             }
 
@@ -195,6 +185,16 @@ async function run() {
                 `
             });
             console.log(`${sub.email} 발송 완료`);
+
+            // === [발송 성공 시 오늘 날짜 기록] ===
+            const { error: updateError } = await supabase
+                .from('subscribers')
+                .update({ last_sent_date: todayStr })
+                .eq('email', sub.email); // email 기준으로 해당 유저의 정보 업데이트
+
+            if (updateError) {
+                console.error(`${sub.email} 발송일 업데이트 실패:`, updateError);
+            }
         }
     } catch (err) {
         console.error('실행 중 에러 발생:', err);

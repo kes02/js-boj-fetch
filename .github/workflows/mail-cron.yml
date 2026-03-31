@@ -2,7 +2,7 @@ name: Send BOJ Problems
 
 on:
   schedule:
-    - cron: '*/15 * * * *' # 15분마다 실행되도록 변경
+    - cron: '0 * * * *' # 매시간 정각에 1회 실행
   workflow_dispatch: # 수동 테스트용 버튼 활성화
 
 jobs:
