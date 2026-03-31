@@ -1,3 +1,5 @@
+import { getSolvedProblems, findProblemsForRule } from './api.js';
+
 // ==========================================
 // 상수 정의
 // ==========================================
@@ -343,96 +345,6 @@ function setRuleLoading(ruleElement, isLoading, resultsContainer) {
 
     generateBtn.querySelector('span').textContent = isLoading ? '검색 중...' : '문제 생성하기';
     statusDiv.textContent = '';
-}
-
-/**
- * 프록시 서버를 통해 사용자가 푼 문제 목록 가져오기
- */
-async function getSolvedProblems(userId) {
-    try {
-        const allSolved = new Set();
-        let page = 1;
-        const maxPages = 50;
-
-        while (page <= maxPages) {
-            const query = `solved_by:${userId}`;
-            const encodedQuery = encodeURIComponent(query);
-            const apiUrl = `https://boj-proxy-server.vercel.app/api/proxy?query=${encodedQuery}&sort=id&page=${page}`;
-
-            const response = await fetch(apiUrl, {
-                headers: { 'Accept': 'application/json' }
-            });
-
-            if (!response.ok) {
-                console.error(`Failed to fetch page ${page} for ${userId}`);
-                break;
-            }
-
-            const data = await response.json();
-
-            if (data.items && data.items.length > 0) {
-                data.items.forEach(problem => allSolved.add(problem.problemId));
-                console.log(`${userId} - 페이지 ${page}: ${data.items.length}개 문제 로드 (총 ${allSolved.size}개)`);
-
-                if (data.items.length < 50) break;
-            } else {
-                break;
-            }
-
-            page++;
-            await new Promise(resolve => setTimeout(resolve, 200));
-        }
-
-        //console.log(`${userId}님이 푼 총 문제 수: ${allSolved.size}개`);
-        return allSolved;
-    } catch (error) {
-        console.error(`${userId}의 푼 문제 목록 가져오기 실패:`, error);
-        return new Set();
-    }
-}
-
-/**
- * 조건에 맞는 문제 검색
- */
-async function findProblemsForRule(rule) {
-    const tierQuery = `tier:${rule.tierFrom}..${rule.tierTo}`;
-
-    let tagQuery = '';
-    if (rule.tags.length > 0) {
-        tagQuery = rule.tagLogic === 'OR'
-            ? `(${rule.tags.map(t => `tag:${t}`).join('|')})`
-            : rule.tags.map(t => `tag:${t}`).join(' ');
-    }
-
-    const langQuery = `lang:${rule.lang.toLowerCase()}`;
-    const fullQuery = `${tierQuery} ${tagQuery} ${langQuery}`.trim();
-
-    //console.log('검색 쿼리:', fullQuery);
-
-    const encodedQuery = encodeURIComponent(fullQuery);
-    const apiUrl = `https://boj-proxy-server.vercel.app/api/proxy?query=${encodedQuery}&sort=${rule.sort}`;
-
-    try {
-        const response = await fetch(apiUrl, {
-            headers: { 'Accept': 'application/json' }
-        });
-
-        if (!response.ok) throw new Error(`API Error: ${response.status}`);
-
-        const data = await response.json();
-        //console.log(`API로부터 받은 문제 수: ${data.items?.length || 0}개`);
-
-        const problems = data.items || [];
-        const finalProblems = rule.sort === 'random'
-            ? problems.sort(() => 0.5 - Math.random())
-            : problems;
-
-        return finalProblems;
-    } catch (error) {
-        console.error(`API 요청 실패:`, error);
-        statusDiv.textContent = `API 요청 실패. 브라우저 콘솔(F12)을 확인해주세요.`;
-        return [];
-    }
 }
 
 /**

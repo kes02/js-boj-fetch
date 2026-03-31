@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>알고리즘 문제 구독</title>
+    <style>
+        /* 기본 초기화 및 폰트 설정 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .subscribe-container {
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 750px;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .description {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.6;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative; /* 자동완성 목록 위치 기준 */
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            padding-left: 2px;
+        }
+
+        /* 입력창 공통 스타일 */
+        input[type="email"],
+        input[type="number"],
+        input[type="time"],
+        input[type="text"],
+        select {
+            width: 100%;
+            height: 46px;
+            padding: 0 15px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+            display: flex;
+            align-items: center;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* 레이아웃 */
+        .form-row {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .items-end { align-items: flex-end; }
+        .flex-1 { flex: 1; }
+        .flex-2 { flex: 2; }
+        .flex-3 { flex: 3; }
+
+        /* 주기 선택 버튼 스타일 (Pill shape) - 너비 고정 및 좌측 정렬 */
+        .frequency-group {
+            display: flex;
+            gap: 4px;
+            background: #f3f4f6;
+            padding: 4px;
+            border-radius: 10px;
+            height: 46px;
+            align-items: center;
+            width: fit-content; /* 내용물만큼만 너비 차지 (좌측 정렬 효과) */
+        }
+
+        .freq-label { cursor: pointer; width: 80px; } /* 각 버튼 너비 80px 고정 */
+        .freq-label input { display: none; }
+        .freq-text {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 38px;
+            border-radius: 7px;
+            font-size: 14px;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .freq-label input:checked + .freq-text {
+            background: white;
+            color: #2563eb;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* 요일 선택 원형 버튼 */
+        .checkbox-group {
+            display: flex;
+            gap: 8px;
+            height: 46px;
+            align-items: center;
+        }
+
+        .day-label { cursor: pointer; }
+        .day-label input { display: none; }
+        .day-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            background-color: #f3f4f6;
+            color: #4b5563;
+            border-radius: 50%;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .day-label input:checked + .day-text {
+            background-color: #3b82f6;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* 문제 출제 조건 영역 */
+        .condition-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #fafafa;
+        }
+
+        .condition-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #374151;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #ddd;
+        }
+
+        .condition-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        /* 태그 입력 및 추천 리스트 (사진 스타일 반영) */
+        .tag-input-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 8px 12px;
+            min-height: 46px;
+        }
+
+        /* 태그 칩 스타일 */
+        .tag-list { display: flex; flex-wrap: wrap; gap: 5px; list-style: none; }
+        .tag-item {
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+        }
+
+        .tag-item span { cursor: pointer; color: #93c5fd; font-size: 16px; }
+        .tag-item span:hover { color: #2563eb; }
+
+        #tag-input { border: none; outline: none; flex: 1; min-width: 150px; padding: 0; height: auto; background: transparent; }
+        #tag-input:focus { box-shadow: none; }
+
+        /* 자동완성 추천 목록 스타일 */
+        .autocomplete-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .autocomplete-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .autocomplete-item:hover {
+            background-color: #f0f7ff;
+            color: #2563eb;
+        }
+
+        .tag-recommendations {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .recommend-tag {
+            font-size: 12px;
+            background-color: #fff;
+            border: 1px solid #e5e7eb;
+            padding: 4px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .recommend-tag:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background-color: #f0f7ff;
+        }
+
+        #submit-btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            background-color: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 10px;
+        }
+
+        #submit-btn:hover { background-color: #2563eb; }
+
+        @media (max-width: 600px) {
+            .form-row { flex-direction: column; align-items: stretch; }
+            .flex-1, .flex-2, .flex-3 { width: 100%; }
+        }
+
+        /* 홈으로 돌아가기 버튼 스타일 */
+        .back-home {
+            position: absolute;
+            top: 25px;
+            left: 30px;
+            text-decoration: none;
+            color: #666;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .back-home:hover {
+            color: #3b82f6; /* 메인 블루 컬러 */
+            transform: translateX(-3px);
+        }
+
+        /* 버튼 배치를 위해 컨테이너에 기준점(Relative) 설정 확인 */
+        .subscribe-container {
+            position: relative;
+        }
+
+        /* 모바일 대응: 버튼이 제목과 겹치지 않게 조정 */
+        @media (max-width: 480px) {
+            .back-home {
+                top: 15px;
+                left: 20px;
+            }
+            h2 {
+                margin-top: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="subscribe-container">
+    <a href="index.html" class="back-home">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        문제 출제 화면으로 돌아가기
+    </a>
+
+    <h2>알고리즘 문제 정기 구독</h2>
+    <p class="description">
+        원하시는 주기에 맞춰 조건에 맞는 문제를 보내드립니다.
+        <br>문제 조건을 수정하고 싶다면 동일한 이메일로 조건을 수정하면 됩니다.
+    </p>
+
+    <form id="subscribe-form">
+        <div class="form-row">
+            <div class="form-group flex-3">
+                <label for="email">이메일 주소</label>
+                <input type="email" id="email" required placeholder="알림 받을 이메일">
+            </div>
+            <div class="form-group flex-1">
+                <label for="schedule-time">발송 시간</label>
+                <input type="time" id="schedule-time" required value="09:00">
+            </div>
+        </div>
+
+        <div class="form-row items-end">
+            <div class="form-group">
+                <label>발송 주기</label>
+                <div class="frequency-group">
+                    <label class="freq-label"><input type="radio" name="frequency" value="daily" checked><span class="freq-text">매일</span></label>
+                    <label class="freq-label"><input type="radio" name="frequency" value="weekly"><span class="freq-text">매주</span></label>
+                    <label class="freq-label"><input type="radio" name="frequency" value="monthly"><span class="freq-text">매월</span></label>
+                </div>
+            </div>
+
+            <div id="weekly-options" class="form-group flex-2" style="display: none;">
+                <label>발송 요일</label>
+                <div class="checkbox-group">
+                    <label class="day-label"><input type="checkbox" name="day-of-week" value="1"><span class="day-text">월</span></label>
+                    <label class="day-label"><input type="checkbox" name="day-of-week" value="2"><span class="day-text">화</span></label>
+                    <label class="day-label"><input type="checkbox" name="day-of-week" value="3"><span class="day-text">수</span></label>
+                    <label class="day-label"><input type="checkbox" name="day-of-week" value="4"><span class="day-text">목</span></label>
+                    <label class="day-label"><input type="checkbox" name="day-of-week" value="5"><span class="day-text">금</span></label>
+                    <label class="day-label"><input type="checkbox" name="day-of-week" value="6"><span class="day-text">토</span></label>
+                    <label class="day-label"><input type="checkbox" name="day-of-week" value="0"><span class="day-text">일</span></label>
+                </div>
+            </div>
+
+            <div id="monthly-options" class="form-group flex-1" style="display: none; max-width: 120px;">
+                <label for="day-of-month">발송 날짜</label>
+                <input type="number" id="day-of-month" min="1" max="31" value="1"
+                       title="말일이 31일보다 적은 달(2월 등)은 해당 월의 마지막 날에 발송됩니다.">
+            </div>
+        </div>
+
+        <div class="condition-box">
+            <h3 class="condition-title">문제 출제 조건 설정</h3>
+
+            <div class="condition-row">
+                <div class="form-group flex-2">
+                    <label>난이도</label>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <select id="tier-from">
+                            <option value="1">Bronze V</option><option value="6" selected>Silver V</option><option value="11">Gold V</option>
+                            <option value="16">Platinum V</option><option value="21">Diamond V</option><option value="31">Master</option>
+                        </select>
+                        <span>~</span>
+                        <select id="tier-to">
+                            <option value="5">Bronze I</option><option value="10">Silver I</option><option value="15" selected>Gold I</option>
+                            <option value="20">Platinum I</option><option value="25">Diamond I</option><option value="31">Master</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group flex-1">
+                    <label>기준</label>
+                    <select id="sort-select">
+                        <option value="random">랜덤</option>
+                        <option value="solved">제출 많은 순</option>
+                        <option value="ac_rate">정답률 높은 순</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>알고리즘 태그 검색</label>
+                <div class="tag-input-area" id="tag-input-area">
+                    <ul id="tag-list" class="tag-list"></ul>
+                    <input type="text" id="tag-input" placeholder="태그 입력 후 Enter (예: math, dp)">
+                </div>
+                <div class="autocomplete-list" id="autocomplete-list"></div>
+
+                <div class="tag-recommendations">
+                    <span class="recommend-tag">math</span><span class="recommend-tag">implementation</span>
+                    <span class="recommend-tag">greedy</span><span class="recommend-tag">dp</span>
+                    <span class="recommend-tag">string</span><span class="recommend-tag">graphs</span>
+                    <span class="recommend-tag">dfs</span><span class="recommend-tag">bfs</span>
+                    <span class="recommend-tag">data_structures</span>
+                </div>
+            </div>
+
+            <div class="condition-row" style="margin-top: 15px; margin-bottom: 0;">
+                <div class="form-group flex-2">
+                    <label>검색 방식</label>
+                    <div style="display: flex; gap: 15px; height: 46px; align-items: center;">
+                        <label style="font-weight: normal; cursor: pointer;"><input type="radio" name="tag-logic" value="AND" checked> 모두 포함(AND)</label>
+                        <label style="font-weight: normal; cursor: pointer;"><input type="radio" name="tag-logic" value="OR"> 하나라도 포함(OR)</label>
+                    </div>
+                </div>
+                <div class="form-group flex-1">
+                    <label>언어</label>
+                    <select id="lang-select">
+                        <option value="Ko" selected>한국어</option>
+                        <option value="En">English</option>
+                        <option value="Ja">日本語</option>
+                    </select>
+                </div>
+                <div class="form-group" style="width: 80px;">
+                    <label>문제 수</label>
+                    <input type="number" id="count-input" value="5" min="1" max="50">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" id="submit-btn">구독 시작하기</button>
+    </form>
+</div>
+
+<script type="module" src="/src/js/subscribe.js"></script>
+<script>
+    /* 1. 발송 주기 상세 옵션 제어 */
+    const freqRadios = document.querySelectorAll('input[name="frequency"]');
+    const weeklyOpts = document.getElementById('weekly-options');
+    const monthlyOpts = document.getElementById('monthly-options');
+
+    freqRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            weeklyOpts.style.display = e.target.value === 'weekly' ? 'flex' : 'none';
+            monthlyOpts.style.display = e.target.value === 'monthly' ? 'flex' : 'none';
+        });
+    });
+
+    /* 2. 알고리즘 태그 검색 및 자동완성 시스템 */
+    const tagInput = document.getElementById('tag-input');
+    const tagInputArea = document.getElementById('tag-input-area');
+    const tagList = document.getElementById('tag-list');
+    const autoList = document.getElementById('autocomplete-list');
+    const recommendTags = document.querySelectorAll('.recommend-tag');
+
+    // 추천용 태그 데이터베이스 (사진 속 d 입력 시 추천되는 예시 기반)
+    const tagDatabase = [
+        "math", "implementation", "greedy", "string", "data_structures", "graphs", "dp",
+        "bruteforcing", "sorting", "geometry", "segtree", "trees", "bfs", "dfs",
+        "binary_search", "prefix_sum", "two_pointer", "backtracking", "number_theory",
+        "combinatorics", "bitmask"
+    ];
+
+    let selectedTags = [];
+
+    // 태그 칩 생성 함수
+    function addTag(tagName) {
+        const tag = tagName.trim().toLowerCase();
+
+        // 데이터베이스에 존재하는 태그인지 확인
+        const isValidTag = tagDatabase.includes(tag);
+
+        if (tag && isValidTag && !selectedTags.includes(tag)) {
+            selectedTags.push(tag);
+            renderTags();
+            updatePlaceholder(); // 태그 추가 후 placeholder 업데이트
+        } else if (tag && !isValidTag) {
+            // 존재하지 않는 태그일 경우 경고 또는 조용히 삭제
+            console.log("존재하지 않는 태그입니다.");
+        }
+
+        tagInput.value = '';
+        autoList.style.display = 'none';
+    }
+
+    // 태그 삭제 함수
+    window.removeTag = function(tagToRemove) {
+        selectedTags = selectedTags.filter(t => t !== tagToRemove);
+        renderTags();
+        updatePlaceholder();
+    };
+
+    function updatePlaceholder() {
+        if (selectedTags.length > 0) {
+            tagInput.placeholder = ''; // 태그가 있으면 빈 문자열
+        } else {
+            tagInput.placeholder = '태그 입력 후 Enter (예: math, dp)'; // 태그가 없으면 복구
+        }
+    }
+
+    // 태그 UI 렌더링
+    function renderTags() {
+        tagList.innerHTML = selectedTags.map(tag => `
+            <li class="tag-item">
+                ${tag} <span onclick="removeTag('${tag}')">&times;</span>
+            </li>
+        `).join('');
+    }
+
+    // 자동완성 로직
+    tagInput.addEventListener('input', (e) => {
+        const val = e.target.value.trim().toLowerCase();
+        autoList.innerHTML = '';
+
+        if (!val) {
+            autoList.style.display = 'none';
+            return;
+        }
+
+        const filtered = tagDatabase.filter(t => t.includes(val) && !selectedTags.includes(t));
+
+        if (filtered.length > 0) {
+            filtered.forEach(t => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.textContent = t;
+                item.addEventListener('click', () => addTag(t));
+                autoList.appendChild(item);
+            });
+            autoList.style.display = 'block';
+        } else {
+            autoList.style.display = 'none';
+        }
+    });
+
+    // 엔터 키 입력 시 추가
+    tagInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addTag(tagInput.value);
+        }
+    });
+
+    // 추천 태그 클릭 시 추가
+    recommendTags.forEach(tagBtn => {
+        tagBtn.addEventListener('click', () => {
+            addTag(tagBtn.textContent);
+        });
+    });
+
+    // 외부 클릭 시 자동완성 닫기
+    document.addEventListener('click', (e) => {
+        if (!tagInputArea.contains(e.target)) {
+            autoList.style.display = 'none';
+        }
+    });
+</script>
+</body>
+</html>
