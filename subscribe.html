@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>알고리즘 문제 구독</title>
     <style>
-        /* 기본 초기화 및 폰트 설정 */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -485,7 +484,7 @@
     const autoList = document.getElementById('autocomplete-list');
     const recommendTags = document.querySelectorAll('.recommend-tag');
 
-    // 추천용 태그 데이터베이스 (사진 속 d 입력 시 추천되는 예시 기반)
+    // 추천용 태그 데이터베이스
     const tagDatabase = [
         "math", "implementation", "greedy", "string", "data_structures", "graphs", "dp",
         "bruteforcing", "sorting", "geometry", "segtree", "trees", "bfs", "dfs",
@@ -498,16 +497,13 @@
     // 태그 칩 생성 함수
     function addTag(tagName) {
         const tag = tagName.trim().toLowerCase();
-
-        // 데이터베이스에 존재하는 태그인지 확인
         const isValidTag = tagDatabase.includes(tag);
 
         if (tag && isValidTag && !selectedTags.includes(tag)) {
             selectedTags.push(tag);
             renderTags();
-            updatePlaceholder(); // 태그 추가 후 placeholder 업데이트
+            updatePlaceholder();
         } else if (tag && !isValidTag) {
-            // 존재하지 않는 태그일 경우 경고 또는 조용히 삭제
             console.log("존재하지 않는 태그입니다.");
         }
 
