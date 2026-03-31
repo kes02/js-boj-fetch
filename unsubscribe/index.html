@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>구독 취소</title>
+</head>
+<body style="font-family: sans-serif; background-color: #f9fafb; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+<div style="background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 100%;">
+    <h2 id="status-message" style="color: #374151; margin-bottom: 20px;">구독 취소 처리 중입니다...</h2>
+    <a href="/" id="home-link" style="display: none; color: #2563eb; text-decoration: none; font-weight: bold;">메인 페이지로 돌아가기</a>
+</div>
+
+<script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    const SUPABASE_URL = '___SUPABASE_URL___';
+    const SUPABASE_ANON_KEY = '___SUPABASE_ANON_KEY___';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    window.onload = async () => {
+        const statusMessage = document.getElementById('status-message');
+        const homeLink = document.getElementById('home-link');
+
+        // 1. URL 파라미터에서 이메일 추출 (?email=user@gmail.com)
+        const urlParams = new URLSearchParams(window.location.search);
+        const emailToCancel = urlParams.get('email');
+
+        if (!emailToCancel) {
+            statusMessage.textContent = '잘못된 접근입니다 (이메일 정보가 없습니다).';
+            homeLink.style.display = 'inline-block';
+            return;
+        }
+
+        try {
+            // 2. Supabase에서 해당 이메일 레코드 삭제
+            const { error } = await supabase
+                .from('subscribers')
+                .delete()
+                .eq('email', emailToCancel);
+
+            if (error) throw error;
+
+            // 3. 성공 처리
+            statusMessage.textContent = '구독이 취소되었습니다.';
+            homeLink.style.display = 'inline-block';
+
+        } catch (error) {
+            console.error("구독 취소 에러:", error);
+            statusMessage.textContent = '처리 중 오류가 발생했습니다. 다시 시도해 주세요.';
+            homeLink.style.display = 'inline-block';
+        }
+    };
+</script>
+</body>
+</html>
