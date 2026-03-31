@@ -6,28 +6,29 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // --- 인증 상태 변경 감지 및 자동 업데이트 ---
 supabase.auth.onAuthStateChange(async (event, session) => {
-    // 사용자가 메일 링크를 클릭하여 로그인(SIGNED_IN)된 순간 발동
     if (event === 'SIGNED_IN' && session) {
         const pendingData = localStorage.getItem('pending_subscription');
+        const isNewSignup = localStorage.getItem('is_new_signup'); // 신규 가입 여부 확인
 
         if (pendingData) {
+            // 신규 가입 상황이라면 알림 없이 데이터만 정리하고 종료
+            if (isNewSignup) {
+                localStorage.removeItem('pending_subscription');
+                localStorage.removeItem('is_new_signup');
+                console.log("신규 가입 완료");
+                return;
+            }
+
             try {
                 const parsedData = JSON.parse(pendingData);
-                console.log("임시 저장된 데이터 발견: DB 동기화를 시작합니다.");
-
-                // 로그인된 세션 상태에서 메타데이터 업데이트
                 const { error } = await supabase.auth.updateUser({
                     data: parsedData
                 });
 
                 if (error) throw error;
 
-                // 업데이트 성공 시 로컬 스토리지 데이터 삭제
                 localStorage.removeItem('pending_subscription');
-                console.log("✅ 구독 정보 업데이트 및 임시 데이터 삭제 완료");
-                alert("🎉 구독 설정 변경이 최종 완료되었습니다!");
-
-                // 주소창의 인증 토큰 제거
+                alert("🎉 구독 설정 변경이 완료되었습니다!"); // 기존 유저 수정 시에만 노출됨
                 window.history.replaceState({}, document.title, window.location.pathname);
             } catch (err) {
                 console.error("데이터 복구 중 에러:", err.message);
