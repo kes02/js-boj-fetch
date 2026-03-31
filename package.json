@@ -1,0 +1,8 @@
+{
+  "name": "js-boj-fetch",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.100.1",
+    "nodemailer": "^8.0.4"
+  }
+}
