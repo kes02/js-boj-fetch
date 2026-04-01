@@ -211,7 +211,7 @@ subscribeForm.addEventListener('submit', async (e) => {
             alert("📧 인증 메일이 발송되었습니다! 메일을 확인해 주세요.");
         }
 
-        window.location.href = "../index.html"; // 폴더 구조에 맞춰 경로 수정
+        window.location.href = "/js-boj-fetch/";
 
     } catch (err) {
         console.error("처리 중 에러:", err);
