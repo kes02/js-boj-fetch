@@ -150,8 +150,8 @@ async function run() {
                   </div>`;
             }).join('');
 
-            const unsubscribeUrl = `https://kes02.github.io/js-boj-fetch/unsubscribe/index.html?email=${encodeURIComponent(sub.email)}`;
-            const subscribeUrl = `https://kes02.github.io/js-boj-fetch/subscribe`;
+            const unsubscribeUrl = `https://kes02.github.io/js-boj-fetch/unsubscribe/?email=${encodeURIComponent(sub.email)}`;
+            const subscribeUrl = `https://kes02.github.io/js-boj-fetch/subscribe/`;
 
             const sendTimeForBypass = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 
