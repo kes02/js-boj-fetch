@@ -2,37 +2,53 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const SUPABASE_URL = '___SUPABASE_URL___';
 const SUPABASE_ANON_KEY = '___SUPABASE_ANON_KEY___';
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        persistSession: false, // 로컬 스토리지에 토큰 저장 안 함
+        autoRefreshToken: false
+    }
+});
 
 // --- 인증 상태 변경 감지 및 자동 업데이트 ---
 supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === 'SIGNED_IN' && session) {
-        const pendingData = localStorage.getItem('pending_subscription');
-        const isNewSignup = localStorage.getItem('is_new_signup'); // 신규 가입 여부 확인
+        const userEmail = session.user.email;
 
-        if (pendingData) {
-            // 신규 가입 상황이라면 알림 없이 데이터만 정리하고 종료
-            if (isNewSignup) {
-                localStorage.removeItem('pending_subscription');
-                localStorage.removeItem('is_new_signup');
-                console.log("신규 가입 완료");
-                return;
-            }
+        try {
+            // 1. 임시 테이블에서 해당 유저의 설정값 가져오기
+            const { data: tempData, error: fetchError } = await supabase
+                .from('temp_subscribers')
+                .select('*')
+                .eq('email', userEmail)
+                .maybeSingle(); // 데이터가 없을 수도 있으므로 maybeSingle 사용
 
-            try {
-                const parsedData = JSON.parse(pendingData);
-                const { error } = await supabase.auth.updateUser({
-                    data: parsedData
-                });
+            if (fetchError) throw fetchError;
 
-                if (error) throw error;
+            // 임시 데이터가 있다면 정식 테이블로 이전
+            if (tempData) {
+                const { error: upsertError } = await supabase
+                    .from('subscribers')
+                    .upsert({
+                        email: tempData.email,
+                        frequency: tempData.frequency,
+                        day_value: tempData.day_value,
+                        schedule_time: tempData.schedule_time,
+                        conditions: tempData.conditions
+                    });
 
-                localStorage.removeItem('pending_subscription');
-                alert("🎉 구독 설정 변경이 완료되었습니다!"); // 기존 유저 수정 시에만 노출됨
+                if (upsertError) throw upsertError;
+
+                // 2. 처리가 끝난 임시 데이터 삭제
+                await supabase.from('temp_subscribers').delete().eq('email', userEmail);
+
+                alert("🎉 구독 설정이 최종 완료되었습니다!");
+
+                // 3. 보안을 위해 즉시 로그아웃 (토큰 노출 방지)
+                await supabase.auth.signOut();
                 window.history.replaceState({}, document.title, window.location.pathname);
-            } catch (err) {
-                console.error("데이터 복구 중 에러:", err.message);
             }
+        } catch (err) {
+            console.error("최종 처리 중 에러:", err.message);
         }
     }
 });
@@ -127,18 +143,18 @@ subscribeForm.addEventListener('submit', async (e) => {
 
     const email = document.getElementById('email').value.trim();
     const frequency = document.querySelector('input[name="frequency"]:checked').value;
-    const scheduleTime = document.getElementById('schedule-time').value;
+    const scheduleTime = parseInt(document.getElementById('schedule-time').value, 10);
 
     let dayValue = null;
     if (frequency === 'weekly') {
-        dayValue = Array.from(document.querySelectorAll('input[name="day-of-week"]:checked')).map(cb => cb.value);
+        dayValue = Array.from(document.querySelectorAll('input[name="day-of-week"]:checked')).map(cb => parseInt(cb.value, 10));
         if (dayValue.length === 0) {
             alert("최소 하나의 요일을 선택해 주세요.");
             submitBtn.disabled = false; submitBtn.textContent = '구독 시작하기';
             return;
         }
     } else if (frequency === 'monthly') {
-        dayValue = document.getElementById('day-of-month').value;
+        dayValue = parseInt(document.getElementById('day-of-month').value, 10);
     }
 
     const currentConditions = {
@@ -151,52 +167,52 @@ subscribeForm.addEventListener('submit', async (e) => {
         count: parseInt(document.getElementById('count-input').value, 10) || 5
     };
 
-    // 링크 클릭 후 돌아왔을 때 사용할 데이터를 로컬 스토리지에 임시 저장
-    const subscriptionData = {
-        frequency,
-        day_value: dayValue,
-        schedule_time: scheduleTime,
-        conditions: currentConditions
-    };
-    localStorage.setItem('pending_subscription', JSON.stringify(subscriptionData));
-
     try {
-        // 1. 신규 가입 시도
+        // 1. 임시 테이블에 데이터 저장 
+        const { error: tempError } = await supabase
+            .from('temp_subscribers')
+            .upsert({
+                email,
+                frequency,
+                day_value: dayValue,
+                schedule_time: scheduleTime,
+                conditions: currentConditions
+            }, { onConflict: 'email' });
+
+        if (tempError) throw tempError;
+
+        // 2. 신규 가입 시도 (signUp 호출 시 유저 생성됨)
         const { data, error: signUpError } = await supabase.auth.signUp({
             email: email,
             password: 'dummy-password-1234',
             options: {
-                data: subscriptionData, // 신규 가입 시에도 데이터 포함
                 emailRedirectTo: window.location.origin + window.location.pathname
             }
         });
 
-        // 2. 이미 가입된 유저인 경우 (Identities 확인)
         const isAlreadyRegistered = data?.user && data.user.identities && data.user.identities.length === 0;
 
+        // 3. 이미 가입된 유저라면 매직 링크 발송
         if (isAlreadyRegistered || (signUpError && signUpError.message.includes("already registered"))) {
-            // 매직 링크 발송 (기존 유저)
             const { error: otpError } = await supabase.auth.signInWithOtp({
                 email: email,
                 options: {
                     emailRedirectTo: window.location.origin + window.location.pathname
                 }
             });
-
             if (otpError) throw otpError;
-            alert("이미 구독 중인 이메일입니다. 수정된 내용을 반영하기 위해 메일함의 '확인' 링크를 클릭해 주세요!");
+            alert("이미 구독 중인 이메일입니다. 수정 내용을 반영하려면 메일함의 '확인' 링크를 클릭해 주세요!");
         } else if (signUpError) {
             throw signUpError;
         } else {
             alert("📧 인증 메일이 발송되었습니다! 메일을 확인해 주세요.");
         }
 
-        window.location.href = "index.html";
+        window.location.href = "../index.html"; // 폴더 구조에 맞춰 경로 수정
 
     } catch (err) {
         console.error("처리 중 에러:", err);
-        localStorage.removeItem('pending_subscription');
-        alert(err.message.includes("rate limit") ? "요청이 너무 많습니다. 잠시 후 시도해주세요." : "오류가 발생했습니다.");
+        alert("오류가 발생했습니다.");
     } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = '구독 시작하기';
