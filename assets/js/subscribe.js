@@ -138,23 +138,26 @@ recommendTags.forEach(tagBtn => {
 // --- 3. 폼 제출 로직 ---
 subscribeForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    // 구독 신청하기 버튼 비활성화
     submitBtn.disabled = true;
+    const originalText = submitBtn.textContent;
     submitBtn.textContent = '처리 중...';
 
     const email = document.getElementById('email').value.trim();
     const frequency = document.querySelector('input[name="frequency"]:checked').value;
-    const scheduleTime = parseInt(document.getElementById('schedule-time').value, 10);
+    const scheduleTime = document.getElementById('schedule-time').value;
 
     let dayValue = null;
     if (frequency === 'weekly') {
-        dayValue = Array.from(document.querySelectorAll('input[name="day-of-week"]:checked')).map(cb => parseInt(cb.value, 10));
+        dayValue = Array.from(document.querySelectorAll('input[name="day-of-week"]:checked')).map(cb => cb.value);
         if (dayValue.length === 0) {
             alert("최소 하나의 요일을 선택해 주세요.");
             submitBtn.disabled = false; submitBtn.textContent = '구독 시작하기';
             return;
         }
     } else if (frequency === 'monthly') {
-        dayValue = parseInt(document.getElementById('day-of-month').value, 10);
+        dayValue = document.getElementById('day-of-month').value;
     }
 
     const currentConditions = {
@@ -168,7 +171,7 @@ subscribeForm.addEventListener('submit', async (e) => {
     };
 
     try {
-        // 1. 임시 테이블에 데이터 저장 
+        // 1. 임시 테이블에 데이터 저장
         const { error: tempError } = await supabase
             .from('temp_subscribers')
             .upsert({
@@ -212,9 +215,15 @@ subscribeForm.addEventListener('submit', async (e) => {
 
     } catch (err) {
         console.error("처리 중 에러:", err);
-        alert("오류가 발생했습니다.");
-    } finally {
+
+        // 에러 세분화
+        if (err.message.includes("rate limit")) {
+            alert("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
+        } else {
+            alert("오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        }
+
         submitBtn.disabled = false;
-        submitBtn.textContent = '구독 시작하기';
+        submitBtn.textContent = originalText;
     }
 });
