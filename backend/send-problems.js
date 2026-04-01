@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
-import { findProblemsForRule } from '../js/api.js';
+import { findProblemsForRule } from '../assets/js/api.js';
 
 // 난이도 변환용 맵핑 객체
 const TIER_MAP = {
