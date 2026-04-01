@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: truef
 
 jobs:
   deploy:
@@ -28,12 +28,12 @@ jobs:
       - name: Inject Supabase Secrets
         run: |
           # 1. subscribe.js 치환
-          sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" js/subscribe.js
-          sed -i "s|___SUPABASE_ANON_KEY___|${{ secrets.SUPABASE_ANON_KEY }}|g" js/subscribe.js
+          sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" assets/js/subscribe.js
+          sed -i "s|___SUPABASE_ANON_KEY___|${{ secrets.SUPABASE_ANON_KEY }}|g" assets/js/subscribe.js
           
-          # 2. unsubscribe/index.html 치환
-          sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" unsubscribe/index.html
-          sed -i "s|___SUPABASE_ANON_KEY___|${{ secrets.SUPABASE_ANON_KEY }}|g" unsubscribe/index.html
+          # 2. unsubscribe.js 치환
+          sed -i "s|___SUPABASE_URL___|${{ secrets.SUPABASE_URL }}|g" assets/js/unsubscribe.js
+          sed -i "s|___SUPABASE_ANON_KEY___|${{ secrets.SUPABASE_ANON_KEY }}|g" assets/js/unsubscribe.js
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
